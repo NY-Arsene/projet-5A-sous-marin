@@ -92,7 +92,7 @@ bool port_i2c_write_read(uint8_t addr7, const uint8_t *tx, uint16_t txlen, uint8
     } else if (addr7 == 0x40 && rxlen >= 2) {
         if (reg == 0xFE) { rx[0] = 0x54; rx[1] = 0x49; }
         else if (reg == 0xFF) { rx[0] = 0x22; rx[1] = 0x60; }
-        else if (reg == 0x02) { rx[0] = 0x25; rx[1] = 0x80; }
+        else if (reg == 0x02) { rx[0] = 0x30; rx[1] = 0x70; }
         else if (reg == 0x01) { rx[0] = 0x0F; rx[1] = 0xA0; }
     }
     return true;
