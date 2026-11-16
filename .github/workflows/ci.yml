@@ -1,0 +1,60 @@
+name: ROV STM32 CI Pipeline
+
+on:
+  push:
+    branches: [ "main", "master", "principal" ]
+  pull_request:
+    branches: [ "main", "master", "principal" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout du code source
+        uses: actions/checkout@v4
+
+      - name: 2. Installation du compilateur croisé ARM (arm-none-eabi-gcc)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi
+
+      - name: 3. Compilation et exécution du banc de test (Hôte Linux + Mock HAL)
+        run: |
+          gcc -Wall -Wextra -Werror \
+            -Istm32_sous_marin/entetes \
+            -Istm32_sous_marin/bibliotheque \
+            -Istm32_sous_marin/pilotes \
+            -Istm32_sous_marin/application \
+            -Istm32_sous_marin/banc_test \
+            tests/main_ci.c \
+            tests/materiel_faux.c \
+            stm32_sous_marin/banc_test/banc_test.c \
+            stm32_sous_marin/bibliotheque/*.c \
+            stm32_sous_marin/pilotes/*.c \
+            stm32_sous_marin/application/gestionnaire_capteurs.c \
+            -lm -o run_bench_ci
+          ./run_bench_ci
+
+      - name: 4. Cross-compilation des couches firmware (Cortex-M4)
+        run: |
+          mkdir -p build_arm
+          arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard \
+            -Wall -Wextra -Werror -O2 \
+            -Istm32_sous_marin/entetes \
+            -Istm32_sous_marin/bibliotheque \
+            -Istm32_sous_marin/pilotes \
+            -Istm32_sous_marin/application \
+            -Istm32_sous_marin/banc_test \
+            -c stm32_sous_marin/bibliotheque/*.c \
+            stm32_sous_marin/pilotes/*.c \
+            stm32_sous_marin/application/*.c \
+            stm32_sous_marin/banc_test/*.c
+          mv *.o build_arm/
+          arm-none-eabi-size build_arm/*.o
+
+      - name: 5. Archivage des binaires compilés avec traçabilité (Commit SHA)
+        uses: actions/upload-artifact@v4
+        with:
+          name: stm32-rov-objects-${{ github.sha }}
+          path: build_arm/*.o
