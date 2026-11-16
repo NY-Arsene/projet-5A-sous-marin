@@ -58,7 +58,7 @@ bool port_i2c_read(uint8_t addr7, uint8_t *rx, uint16_t len) {
             rx[0] = (uint8_t)(prom[idx] >> 8);
             rx[1] = (uint8_t)(prom[idx] & 0xFF);
         } else if (last_i2c_cmd == 0x00 && len >= 3) {
-            uint32_t adc = ms5837_is_temp ? 8077636 : 6465444;
+            uint32_t adc = ms5837_is_temp ? 8077636 : 6200000;
             rx[0] = (uint8_t)(adc >> 16);
             rx[1] = (uint8_t)(adc >> 8);
             rx[2] = (uint8_t)(adc);
