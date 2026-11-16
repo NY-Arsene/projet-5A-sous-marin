@@ -38,7 +38,6 @@ bool port_i2c_write(uint8_t addr7, const uint8_t *tx, uint16_t len) {
     if (tx && len > 0) {
         last_i2c_cmd = tx[0];
         if (addr7 == 0x76) {
-            /* 0x40..0x48 = conversion D1 (Pression), 0x50..0x58 = conversion D2 (Temperature) */
             if ((tx[0] & 0xF0) == 0x40) ms5837_is_temp = false;
             else if ((tx[0] & 0xF0) == 0x50) ms5837_is_temp = true;
         }
@@ -74,11 +73,10 @@ bool port_i2c_write_read(uint8_t addr7, const uint8_t *tx, uint16_t txlen, uint8
     memset(rx, 0, rxlen);
 
     if (addr7 == 0x6A) {
+        int16_t az = -16393; /* -1.0 g (repere NED : Z vers le bas) */
         if (reg == 0x0F && rxlen >= 1) rx[0] = 0x6C;
         else if (reg == 0x1E && rxlen >= 1) rx[0] = 0x03;
         else if (reg == 0x22 && rxlen >= 12) {
-            /* OUTX_L_G (0..5) puis OUTX_L_A (6..11) -> Z accel est aux octets 10 et 11 */
-            int16_t az = 16393; /* +1.0 g */
             rx[10] = (uint8_t)(az & 0xFF);
             rx[11] = (uint8_t)((az >> 8) & 0xFF);
         }
@@ -104,10 +102,29 @@ uint16_t port_adc_read(port_adc_t ch) { return (ch == PORT_ADC_LEAK) ? sim_adc_l
 bool port_gpio_read(port_pin_t pin) { return (pin < PORT_PIN_COUNT) ? sim_pins[pin] : false; }
 
 static uint8_t ow_idx = 0;
-static const uint8_t ds18b20_scratchpad[9] = {0x68, 0x01, 0x4B, 0x46, 0x7F, 0xFF, 0x0C, 0x10, 0x5B};
-bool port_ow_reset(void) { ow_idx = 0; return true; }
+static uint8_t ds18b20_sp[9] = {0x68, 0x01, 0x4B, 0x46, 0x7F, 0xFF, 0x0C, 0x10, 0x00};
+
+static uint8_t calc_ow_crc8(const uint8_t *data, uint8_t len) {
+    uint8_t crc = 0;
+    for (uint8_t i = 0; i < len; i++) {
+        uint8_t byte = data[i];
+        for (int b = 0; b < 8; b++) {
+            uint8_t mix = (uint8_t)((crc ^ byte) & 0x01);
+            crc >>= 1;
+            if (mix) crc ^= 0x8C;
+            byte >>= 1;
+        }
+    }
+    return crc;
+}
+
+bool port_ow_reset(void) {
+    ow_idx = 0;
+    ds18b20_sp[8] = calc_ow_crc8(ds18b20_sp, 8);
+    return true;
+}
 void port_ow_write_byte(uint8_t b) { if (b == 0xBE) ow_idx = 0; }
-uint8_t port_ow_read_byte(void) { return (ow_idx < 9) ? ds18b20_scratchpad[ow_idx++] : 0xFF; }
+uint8_t port_ow_read_byte(void) { return (ow_idx < 9) ? ds18b20_sp[ow_idx++] : 0xFF; }
 
 int port_console_getc(uint32_t timeout_ms) { (void)timeout_ms; return -1; }
 void port_motor_enable(port_motor_t m, bool on) { (void)m; (void)on; }
