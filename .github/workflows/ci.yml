@@ -35,7 +35,11 @@ jobs:
             stm32_sous_marin/application/gestionnaire_capteurs.c \
             -lm -o run_bench_ci
           ./run_bench_ci
+      - name: 3b. Tests unitaires (14 programmes, faux matériel)
+        run: make -C tests_unitaires test
 
+      - name: 3c. Tests unitaires avec ASan/UBSan (erreurs mémoire)
+        run: make -C tests_unitaires asan
       - name: 4. Cross-compilation des couches firmware (Cortex-M4)
         run: |
           mkdir -p build_arm
