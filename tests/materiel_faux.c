@@ -50,7 +50,7 @@ bool port_i2c_read(uint8_t addr7, uint8_t *rx, uint16_t len) {
     memset(rx, 0, len);
 
     if (addr7 == 0x76) {
-        static uint16_t prom[8] = {0x0000, 46372, 43981, 29059, 27842, 31553, 28165, 0};
+        static uint16_t prom[8] = {0x0010, 46372, 43981, 29059, 27842, 31553, 28165, 0};
         prom[0] = (uint16_t)((ms5837_crc4(prom) << 12) | 0x0010);
 
         if (last_i2c_cmd >= 0xA0 && last_i2c_cmd <= 0xAE && len >= 2) {
